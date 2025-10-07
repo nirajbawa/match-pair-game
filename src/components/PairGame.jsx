@@ -27,7 +27,6 @@ const updateUserScore = async (userId, newScore, gameCompleted = true) => {
         submittedAt: new Date().toISOString(),
       });
     } else {
-      // Create user document if it doesn't exist
       await setDoc(userRef, {
         username: getUserFromSession()?.username || "Unknown",
         score: newScore,
