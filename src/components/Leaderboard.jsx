@@ -1,5 +1,5 @@
 // src/pages/Leaderboard.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +12,9 @@ const Leaderboard = () => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [newEntries, setNewEntries] = useState([]);
   const navigate = useNavigate();
+  const previousUsersRef = useRef([]);
 
   // Get current user from session
   useEffect(() => {
@@ -73,6 +75,23 @@ const Leaderboard = () => {
           rank: index + 1
         }));
 
+        // Detect new entries for animation
+        const previousUsers = previousUsersRef.current;
+        const newUserIds = rankedUsers.map(user => user.id);
+        const previousUserIds = previousUsers.map(user => user.id);
+        
+        const addedUsers = rankedUsers.filter(user => !previousUserIds.includes(user.id));
+        
+        if (addedUsers.length > 0 && previousUsers.length > 0) {
+          setNewEntries(addedUsers.map(user => user.id));
+          
+          // Clear new entries after animation
+          setTimeout(() => {
+            setNewEntries([]);
+          }, 3000);
+        }
+
+        previousUsersRef.current = rankedUsers;
         setUsers(rankedUsers);
         setLoading(false);
       },
@@ -135,6 +154,14 @@ const Leaderboard = () => {
 
   const currentUserRank = getCurrentUserRank();
 
+  // Animation styles for new entries
+  const getEntryAnimation = (userId) => {
+    if (newEntries.includes(userId)) {
+      return 'animate-new-entry border-green-400 shadow-green-500/50';
+    }
+    return '';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 py-4 px-3 sm:py-6 sm:px-4 relative overflow-hidden">
       {/* Animated Background */}
@@ -143,6 +170,16 @@ const Leaderboard = () => {
         <div className="absolute -bottom-10 -right-10 w-20 h-20 sm:w-32 sm:h-32 bg-cyan-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 sm:w-48 sm:h-48 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500"></div>
       </div>
+
+      {/* New Entry Notification */}
+      {newEntries.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 animate-bounce">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-lg border border-green-300 flex items-center space-x-2">
+            <span className="text-lg">🎉</span>
+            <span className="font-bold text-sm">New {newEntries.length} player{newEntries.length > 1 ? 's' : ''} joined!</span>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Header */}
@@ -200,7 +237,7 @@ const Leaderboard = () => {
 
             {/* Current User Stats */}
             {currentUserRank && (
-              <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl p-3 sm:p-4 border border-purple-400/30 mb-4">
+              <div className={`bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl p-3 sm:p-4 border border-purple-400/30 mb-4 transition-all duration-500 ${getEntryAnimation(currentUserRank.id)}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className={`bg-gradient-to-r ${getRankColor(currentUserRank.rank)} text-white font-black rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shadow-lg text-sm sm:text-base`}>
@@ -227,31 +264,6 @@ const Leaderboard = () => {
 
             {/* Filters and Search - Mobile Stacked */}
             <div className="block sm:hidden space-y-3">
-              {/* Time Filter */}
-              {/* <div className="bg-white/10 rounded-xl p-3">
-                <label className="text-white/80 text-xs font-semibold block mb-2">Time Period</label>
-                <div className="flex space-x-1">
-                  {[
-                    { value: 'all', label: 'All' },
-                    { value: 'today', label: 'Today' },
-                    { value: 'week', label: 'Week' }
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setFilter(option.value)}
-                      className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                        filter === option.value
-                          ? 'bg-white text-gray-900 shadow-lg'
-                          : 'bg-white/10 text-white/80 hover:bg-white/20'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div> */}
-
-              {/* Search */}
               <div className="bg-white/10 rounded-xl p-3">
                 <label className="text-white/80 text-xs font-semibold block mb-2">Search Players</label>
                 <input
@@ -268,29 +280,6 @@ const Leaderboard = () => {
 
             {/* Filters and Search - Desktop Horizontal */}
             <div className="hidden sm:grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
-              {/* <div className="bg-white/10 rounded-xl p-3">
-                <label className="text-white/80 text-sm font-semibold block mb-2">Time Period</label>
-                <div className="flex space-x-2">
-                  {[
-                    { value: 'all', label: 'All Time' },
-                    { value: 'today', label: 'Today' },
-                    { value: 'week', label: 'This Week' }
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setFilter(option.value)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                        filter === option.value
-                          ? 'bg-white text-gray-900 shadow-lg'
-                          : 'bg-white/10 text-white/80 hover:bg-white/20'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div> */}
-
               <div className="bg-white/10 rounded-xl p-3">
                 <label className="text-white/80 text-sm font-semibold block mb-2">Search Players</label>
                 <input
@@ -362,7 +351,7 @@ const Leaderboard = () => {
                           'border-orange-400'
                         } shadow-2xl transform ${
                           user.rank === 1 ? 'sm:scale-105 sm:-mt-2' : 'scale-100'
-                        } transition-all duration-300`}
+                        } transition-all duration-300 ${getEntryAnimation(user.id)}`}
                       >
                         <div className="text-3xl sm:text-4xl mb-2">{getRankIcon(user.rank)}</div>
                         <div className="text-white font-black text-lg sm:text-xl mb-1 truncate px-2">
@@ -398,7 +387,7 @@ const Leaderboard = () => {
                         currentUser?.id === user.id
                           ? 'border-cyan-400 bg-cyan-500/20'
                           : 'border-white/10'
-                      }`}
+                      } ${getEntryAnimation(user.id)}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3 sm:space-x-4">
@@ -470,6 +459,31 @@ const Leaderboard = () => {
           </button>
         </div>
       )}
+
+      {/* Add custom CSS for animations */}
+      <style jsx>{`
+        @keyframes newEntry {
+          0% {
+            transform: scale(0.8);
+            opacity: 0;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+          }
+          50% {
+            transform: scale(1.05);
+            opacity: 1;
+            box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+          }
+        }
+        
+        .animate-new-entry {
+          animation: newEntry 1.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
