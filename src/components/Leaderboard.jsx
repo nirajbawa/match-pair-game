@@ -390,7 +390,7 @@ const Leaderboard = () => {
                 <h3 className="text-xl sm:text-2xl font-black text-white mb-4 sm:mb-6 text-center">
                 Leaderboard
                 </h3>
-                <div className="space-y-2 sm:space-y-3 max-h-80 sm:max-h-96 overflow-y-auto">
+                <div className="space-y-2 sm:space-y-3 max-h-full ">
                   {filteredUsers.map((user) => (
                     <div
                       key={user.id}
