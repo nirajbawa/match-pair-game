@@ -1,61 +1,60 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { useNavigate } from "react-router-dom";
 
 // User utility functions
 const getUserFromSession = () => {
   try {
-    const userData = sessionStorage.getItem('gameUser');
+    const userData = sessionStorage.getItem("gameUser");
     return userData ? JSON.parse(userData) : null;
   } catch (error) {
-    console.error('Error getting user from session:', error);
+    console.error("Error getting user from session:", error);
     return null;
   }
 };
 
 const updateUserScore = async (userId, newScore, gameCompleted = true) => {
   try {
-    const userRef = doc(db, 'users', userId);
+    const userRef = doc(db, "users", userId);
     const userDoc = await getDoc(userRef);
-    
+
     if (userDoc.exists()) {
       await updateDoc(userRef, {
         score: newScore,
         lastActive: new Date().toISOString(),
         gameCompleted: gameCompleted,
-        submittedAt: new Date().toISOString()
+        submittedAt: new Date().toISOString(),
       });
     } else {
       // Create user document if it doesn't exist
       await setDoc(userRef, {
-        username: getUserFromSession()?.username || 'Unknown',
+        username: getUserFromSession()?.username || "Unknown",
         score: newScore,
         level: 1,
         gameCompleted: gameCompleted,
         submittedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        lastActive: new Date().toISOString(),
       });
     }
-    
-    console.log('Score updated successfully for user:', userId);
+
+    console.log("Score updated successfully for user:", userId);
     return true;
   } catch (error) {
-    console.error('Error updating user score:', error);
+    console.error("Error updating user score:", error);
     return false;
   }
 };
 
 const DragDropMatchingGame = () => {
   // Sample data - you can replace this with your actual content
-  const initialQuestions = [
-    { id: 1, text: 'Capital of France', answer: 'Paris' },
-    { id: 2, text: 'Largest planet', answer: 'Jupiter' },
-    { id: 3, text: 'Chemical symbol for gold', answer: 'Au' },
-    { id: 4, text: 'Author of Romeo and Juliet', answer: 'Shakespeare' },
-    { id: 5, text: 'Programming language for web', answer: 'JavaScript' },
-  ];
+const initialQuestions = [
+  { id: 1, text: '1-Tier Architecture', answer: 'The DBMS software like MySQL which is used to access the database directly' },
+  { id: 2, text: '2-Tier Architecture', answer: 'The MySQL Workbench which acts as a client application to access the database' },
+  { id: 3, text: '3-Tier Architecture', answer: 'Any web-based application where the client interacts through a server, for example, Rakshak AI' },
+  { id: 4, text: 'N-Tier Architecture', answer: 'Large enterprise systems having multiple layers such as presentation, application, and database servers' },
+];
 
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
@@ -67,7 +66,7 @@ const DragDropMatchingGame = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [user, setUser] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState('');
+  const [submitStatus, setSubmitStatus] = useState("");
   const navigate = useNavigate();
 
   // Refs for better performance
@@ -80,7 +79,7 @@ const DragDropMatchingGame = () => {
     const currentUser = getUserFromSession();
     setUser(currentUser);
     resetGame();
-    
+
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -90,16 +89,15 @@ const DragDropMatchingGame = () => {
   }, []);
 
   const resetGame = useCallback(() => {
-  
     const shuffledQuestions = [...initialQuestions]
       .sort(() => Math.random() - 0.5)
       .map((q, index) => ({ ...q, displayId: index + 1 }));
-    
+
     const shuffledAnswers = [...initialQuestions]
-      .map(q => q.answer)
+      .map((q) => q.answer)
       .sort(() => Math.random() - 0.5)
       .map((answer, index) => ({ id: index + 1, text: answer }));
-    
+
     setQuestions(shuffledQuestions);
     setAnswers(shuffledAnswers);
     setMatches([]);
@@ -109,47 +107,49 @@ const DragDropMatchingGame = () => {
     setIsDragging(false);
     setShowConfetti(false);
     setIsSubmitting(false);
-    setSubmitStatus('');
+    setSubmitStatus("");
   }, [initialQuestions]);
 
   const handleSubmit = useCallback(async () => {
     if (matches.length !== questions.length || !user) return;
 
     setIsSubmitting(true);
-    setSubmitStatus('Submitting your score...');
+    setSubmitStatus("Submitting your score...");
 
     try {
-      const correctMatches = matches.filter(match => 
-        initialQuestions.find(q => q.id === match.questionId)?.answer === match.answerText
+      const correctMatches = matches.filter(
+        (match) =>
+          initialQuestions.find((q) => q.id === match.questionId)?.answer ===
+          match.answerText
       ).length;
-      
+
       const finalScore = correctMatches;
       setScore(finalScore);
-      
+
       // Update user score in Firebase
       const success = await updateUserScore(user.id, finalScore, true);
-      
+
       if (success) {
         setGameCompleted(true);
         setShowConfetti(true);
-        setSubmitStatus('Score submitted successfully! 🎉');
-        
+        setSubmitStatus("Score submitted successfully! 🎉");
+
         // Update local user data with new score
         const updatedUser = {
           ...user,
           score: finalScore,
-          gameCompleted: true
+          gameCompleted: true,
         };
         setUser(updatedUser);
-        sessionStorage.setItem('gameUser', JSON.stringify(updatedUser));
-        
+        sessionStorage.setItem("gameUser", JSON.stringify(updatedUser));
+
         setTimeout(() => setShowConfetti(false), 3000);
       } else {
-        setSubmitStatus('Failed to submit score. Please try again.');
+        setSubmitStatus("Failed to submit score. Please try again.");
       }
     } catch (error) {
-      console.error('Error submitting score:', error);
-      setSubmitStatus('Error submitting score. Please try again.');
+      console.error("Error submitting score:", error);
+      setSubmitStatus("Error submitting score. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -157,17 +157,20 @@ const DragDropMatchingGame = () => {
 
   // Optimized drag handlers
   const handleDragStart = useCallback((e, item, type) => {
-    if (type === 'answer' && isAnswerUsed(item.id)) return;
-    
+    if (type === "answer" && isAnswerUsed(item.id)) return;
+
     setIsDragging(true);
-    
+
     if (e.dataTransfer) {
-      e.dataTransfer.setData('application/json', JSON.stringify({ ...item, type }));
-      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData(
+        "application/json",
+        JSON.stringify({ ...item, type })
+      );
+      e.dataTransfer.effectAllowed = "move";
     }
-    
+
     // For touch devices
-    if (e.type === 'touchstart') {
+    if (e.type === "touchstart") {
       const touch = e.touches[0];
       touchStartRef.current = { x: touch.clientX, y: touch.clientY };
       setActiveTouchItem({ ...item, type });
@@ -178,16 +181,17 @@ const DragDropMatchingGame = () => {
   const createTouchDragPreview = useCallback((text, x, y) => {
     removeTouchDragPreview();
 
-    const preview = document.createElement('div');
-    preview.id = 'touch-drag-preview';
+    const preview = document.createElement("div");
+    preview.id = "touch-drag-preview";
     preview.textContent = text;
-    preview.style.position = 'fixed';
+    preview.style.position = "fixed";
     preview.style.left = `${x - 50}px`;
     preview.style.top = `${y - 25}px`;
-    preview.style.zIndex = '1000';
-    preview.style.pointerEvents = 'none';
-    preview.className = 'bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl font-bold border-2 border-white text-center min-w-[100px] transform -translate-y-1/2';
-    
+    preview.style.zIndex = "1000";
+    preview.style.pointerEvents = "none";
+    preview.className =
+      "bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl font-bold border-2 border-white text-center min-w-[100px] max-w-[200px]";
+
     document.body.appendChild(preview);
     draggedElementRef.current = preview;
   }, []);
@@ -196,9 +200,9 @@ const DragDropMatchingGame = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    
+
     animationFrameRef.current = requestAnimationFrame(() => {
-      const preview = document.getElementById('touch-drag-preview');
+      const preview = document.getElementById("touch-drag-preview");
       if (preview) {
         preview.style.left = `${x - 50}px`;
         preview.style.top = `${y - 25}px`;
@@ -210,49 +214,62 @@ const DragDropMatchingGame = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    
-    const preview = document.getElementById('touch-drag-preview');
+
+    const preview = document.getElementById("touch-drag-preview");
     if (preview) {
       preview.remove();
     }
     draggedElementRef.current = null;
   }, []);
 
-  const handleTouchMove = useCallback((e) => {
-    if (!activeTouchItem) return;
-    
-    e.preventDefault();
-    const touch = e.touches[0];
-    updateTouchDragPreview(touch.clientX, touch.clientY);
-  }, [activeTouchItem, updateTouchDragPreview]);
+  const handleTouchMove = useCallback(
+    (e) => {
+      if (!activeTouchItem) return;
 
-  const handleTouchEnd = useCallback((e) => {
-    if (!activeTouchItem) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      updateTouchDragPreview(touch.clientX, touch.clientY);
+    },
+    [activeTouchItem, updateTouchDragPreview]
+  );
 
-    const touch = e.changedTouches[0];
-    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
-    const questionElement = elements.find(el => el.classList.contains('question-drop-zone'));
+  const handleTouchEnd = useCallback(
+    (e) => {
+      if (!activeTouchItem) return;
 
-    if (questionElement && activeTouchItem.type === 'answer') {
-      const questionId = parseInt(questionElement.dataset.questionId);
-      const targetQuestion = questions.find(q => q.id === questionId);
-      
-      if (targetQuestion) {
-        handleDropOnQuestion(targetQuestion, activeTouchItem);
+      const touch = e.changedTouches[0];
+      const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+      const questionElement = elements.find((el) =>
+        el.classList.contains("question-drop-zone")
+      );
+
+      if (questionElement && activeTouchItem.type === "answer") {
+        const questionId = parseInt(questionElement.dataset.questionId);
+        const targetQuestion = questions.find((q) => q.id === questionId);
+
+        if (targetQuestion) {
+          handleDropOnQuestion(targetQuestion, activeTouchItem);
+        }
       }
-    }
 
-    removeTouchDragPreview();
-    setActiveTouchItem(null);
-    setIsDragging(false);
-  }, [activeTouchItem, questions]);
+      removeTouchDragPreview();
+      setActiveTouchItem(null);
+      setIsDragging(false);
+    },
+    [activeTouchItem, questions]
+  );
 
   const handleDropOnQuestion = useCallback((targetQuestion, draggedAnswer) => {
-    setMatches(prevMatches => {
-      const existingMatchIndex = prevMatches.findIndex(match => match.questionId === targetQuestion.id);
-      const filteredMatches = existingMatchIndex !== -1 
-        ? prevMatches.filter(match => match.questionId !== targetQuestion.id)
-        : prevMatches;
+    setMatches((prevMatches) => {
+      const existingMatchIndex = prevMatches.findIndex(
+        (match) => match.questionId === targetQuestion.id
+      );
+      const filteredMatches =
+        existingMatchIndex !== -1
+          ? prevMatches.filter(
+              (match) => match.questionId !== targetQuestion.id
+            )
+          : prevMatches;
 
       const newMatch = {
         questionId: targetQuestion.id,
@@ -266,33 +283,48 @@ const DragDropMatchingGame = () => {
   }, []);
 
   const removeMatch = useCallback((questionId) => {
-    setMatches(prev => prev.filter(match => match.questionId !== questionId));
+    setMatches((prev) =>
+      prev.filter((match) => match.questionId !== questionId)
+    );
   }, []);
 
-  const getMatchedAnswer = useCallback((questionId) => {
-    return matches.find(match => match.questionId === questionId);
-  }, [matches]);
+  const getMatchedAnswer = useCallback(
+    (questionId) => {
+      return matches.find((match) => match.questionId === questionId);
+    },
+    [matches]
+  );
 
-  const isAnswerUsed = useCallback((answerId) => {
-    return matches.some(match => match.answerId === answerId);
-  }, [matches]);
+  const isAnswerUsed = useCallback(
+    (answerId) => {
+      return matches.some((match) => match.answerId === answerId);
+    },
+    [matches]
+  );
 
   // Touch event listeners with cleanup
   useEffect(() => {
     if (activeTouchItem) {
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
-      document.addEventListener('touchend', handleTouchEnd);
-      document.addEventListener('touchcancel', handleTouchEnd);
+      document.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+      });
+      document.addEventListener("touchend", handleTouchEnd);
+      document.addEventListener("touchcancel", handleTouchEnd);
     }
 
     return () => {
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('touchcancel', handleTouchEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("touchcancel", handleTouchEnd);
     };
   }, [activeTouchItem, handleTouchMove, handleTouchEnd]);
 
-  const allMatched = matches.length === questions.length && questions.length > 0;
+  // Split questions for mobile layout
+  const topQuestions = questions.slice(0, 2);
+  const bottomQuestions = questions.slice(2);
+
+  const allMatched =
+    matches.length === questions.length && questions.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 py-6 px-4 relative overflow-hidden">
@@ -313,7 +345,14 @@ const DragDropMatchingGame = () => {
               style={{
                 left: `${Math.random() * 100}%`,
                 animationDelay: `${Math.random() * 3}s`,
-                backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'][i % 6]
+                backgroundColor: [
+                  "#ff0000",
+                  "#00ff00",
+                  "#0000ff",
+                  "#ffff00",
+                  "#ff00ff",
+                  "#00ffff",
+                ][i % 6],
               }}
             />
           ))}
@@ -327,38 +366,51 @@ const DragDropMatchingGame = () => {
             <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent mb-3">
               🎮 Match Masters
             </h1>
-            <p className="text-lg text-white/80 font-medium">Drag answers to their matching questions!</p>
-            
+            <p className="text-lg text-white/80 font-medium">
+              Drag answers to their matching Pair!
+            </p>
+
             {/* User Info */}
             {user && (
               <div className="mt-3 bg-white/10 rounded-xl p-3 inline-block">
                 <p className="text-white/90 font-semibold">
-                  Playing as: <span className="text-yellow-300">{user.username}</span>
+                  Playing as:{" "}
+                  <span className="text-yellow-300">{user.username}</span>
                 </p>
                 <p className="text-white/70 text-sm">
-                  Level: {user.level} | Current Score: {user.score}
+                  Current Score: {user.score}
                 </p>
               </div>
             )}
-            
+
             {/* Score & Progress */}
             <div className="mt-4 grid grid-cols-2 gap-4 max-w-md mx-auto">
               <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30">
                 <div className="text-white/70 text-sm font-semibold">Score</div>
-                <div className="text-2xl font-black text-white">{score}<span className="text-white/50">/{questions.length}</span></div>
+                <div className="text-2xl font-black text-white">
+                  {score}
+                  <span className="text-white/50">/{questions.length}</span>
+                </div>
               </div>
               <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30">
-                <div className="text-white/70 text-sm font-semibold">Progress</div>
-                <div className="text-2xl font-black text-white">{matches.length}<span className="text-white/50">/{questions.length}</span></div>
+                <div className="text-white/70 text-sm font-semibold">
+                  Progress
+                </div>
+                <div className="text-2xl font-black text-white">
+                  {matches.length}
+                  <span className="text-white/50">/{questions.length}</span>
+                </div>
               </div>
             </div>
 
             {/* Progress Bar */}
             <div className="mt-4 max-w-md mx-auto">
               <div className="bg-white/20 rounded-full h-3 overflow-hidden">
-                <div 
+                <div
                   className="bg-gradient-to-r from-green-400 to-cyan-400 h-full rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${(matches.length / questions.length) * 100}%` }}
+                  style={{
+                    width: `${(matches.length / questions.length) * 100}%`,
+                  }}
                 ></div>
               </div>
             </div>
@@ -366,9 +418,13 @@ const DragDropMatchingGame = () => {
 
           {gameCompleted && (
             <div className="mt-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 border border-white/30 shadow-2xl animate-bounce-in">
-              <h3 className="text-2xl md:text-3xl font-black text-white mb-2">🎉 Mission Complete!</h3>
+              <h3 className="text-2xl md:text-3xl font-black text-white mb-2">
+                🎉 Mission Complete!
+              </h3>
               <p className="text-white/90 text-lg">
-                You scored <span className="font-black text-yellow-300">{score}</span> out of {questions.length}
+                You scored{" "}
+                <span className="font-black text-yellow-300">{score}</span> out
+                of {questions.length}
               </p>
               {user?.gameCompleted && (
                 <p className="text-green-200 font-semibold mt-2">
@@ -376,8 +432,8 @@ const DragDropMatchingGame = () => {
                 </p>
               )}
               <button
-                onClick={()=>{
-                  navigate("/leaderboard")
+                onClick={() => {
+                  navigate("/leaderboard");
                 }}
                 className="mt-4 bg-white text-gray-900 hover:bg-gray-100 font-bold py-3 px-8 rounded-xl transition-all duration-200 active:scale-95 shadow-lg"
               >
@@ -389,50 +445,167 @@ const DragDropMatchingGame = () => {
 
         {/* Game Container */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 md:p-6 mb-6 border border-white/20 shadow-2xl">
-          {/* Questions Section */}
-          <div className="mb-8">
-            <h2 className="text-2xl md:text-3xl font-black text-white mb-6 flex items-center justify-center">
-              <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 rounded-xl mr-3 shadow-lg">❓</span>
+          {/* Top Questions Section */}
+          <div className="mb-6">
+            <h2 className="text-2xl md:text-3xl font-black text-white mb-4 flex items-center justify-center">
+              <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 rounded-xl mr-3 shadow-lg">
+                ❓
+              </span>
               Questions Zone
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {questions.map((question) => {
+            
+            {/* Top Questions */}
+            <div className="grid grid-cols-1 gap-4 mb-8">
+              {topQuestions.map((question) => {
                 const match = getMatchedAnswer(question.id);
-                
+
                 return (
                   <div
                     key={question.id}
                     data-question-id={question.id}
                     className={`question-drop-zone p-4 rounded-xl border-3 transition-all duration-300 touch-none ${
                       match
-                        ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 shadow-lg'
-                        : 'bg-white/10 border-white/30 hover:border-cyan-400/50 hover:bg-white/15'
-                    } ${isDragging ? 'scale-105 shadow-xl' : ''}`}
+                        ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 shadow-lg"
+                        : "bg-white/10 border-white/30 hover:border-cyan-400/50 hover:bg-white/15"
+                    } ${isDragging ? "scale-105 shadow-xl" : ""}`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
-                      const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                      if (data.type === 'answer') {
+                      const data = JSON.parse(
+                        e.dataTransfer.getData("application/json")
+                      );
+                      if (data.type === "answer") {
                         handleDropOnQuestion(question, data);
                       }
                     }}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center flex-1 min-w-0">
+                        <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg flex-shrink-0">
                           {question.displayId}
                         </span>
-                        <span className="font-bold text-white text-lg">{question.text}</span>
+                        <span className="font-bold text-white text-lg">
+                          {question.text}
+                        </span>
                       </div>
-                      
+
                       {match && (
-                        <div className="flex items-center">
-                          <span className="bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-black mr-2 shadow-lg border border-yellow-300">
-                            {match.answerText}
-                          </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="bg-white text-gray-900 px-3 py-2 rounded-xl text-sm font-bold shadow-lg border border-yellow-300 max-w-[200px] sm:max-w-[250px] md:max-w-[300px]">
+                            <div className="truncate text-ellipsis overflow-hidden">
+                              {match.answerText}
+                            </div>
+                          </div>
                           <button
                             onClick={() => removeMatch(question.id)}
-                            className="text-white hover:text-red-300 transition-colors text-lg bg-red-500/30 hover:bg-red-500/50 rounded-full w-8 h-8 flex items-center justify-center"
+                            className="text-white hover:text-red-300 transition-colors text-lg bg-red-500/30 hover:bg-red-500/50 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0"
+                            aria-label="Remove match"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Answers Section - Placed between top and bottom questions */}
+            <div className="mb-8">
+              <h2 className="text-2xl md:text-3xl font-black text-white mb-4 flex items-center justify-center">
+                <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-3 rounded-xl mr-3 shadow-lg">
+                  🎯
+                </span>
+                Answers Pool
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {answers.map((answer) => {
+                  const isUsed = isAnswerUsed(answer.id);
+                  const isActiveTouch = activeTouchItem?.id === answer.id;
+
+                  return (
+                    <div
+                      key={answer.id}
+                      draggable={!isUsed}
+                      onDragStart={(e) =>
+                        !isUsed && handleDragStart(e, answer, "answer")
+                      }
+                      onTouchStart={(e) =>
+                        !isUsed && handleDragStart(e, answer, "answer")
+                      }
+                      className={`p-3 rounded-xl text-center font-bold transition-all duration-300 touch-none select-none relative overflow-hidden ${
+                        isUsed
+                          ? "bg-gray-600/30 text-gray-400 cursor-not-allowed transform scale-95"
+                          : isActiveTouch
+                          ? "bg-gradient-to-r from-yellow-400 to-orange-400 text-white scale-110 shadow-2xl border-2 border-white"
+                          : "bg-gradient-to-r from-green-400 to-emerald-500 text-white hover:scale-105 hover:shadow-xl active:scale-95 border-2 border-transparent"
+                      } shadow-lg`}
+                      style={{
+                        userSelect: "none",
+                        WebkitUserSelect: "none",
+                        WebkitTouchCallout: "none",
+                      }}
+                    >
+                      <div className="text-sm md:text-base break-words whitespace-normal">
+                        {answer.text}
+                      </div>
+                      {isUsed && (
+                        <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                          <div className="w-full h-0.5 bg-white transform rotate-12 absolute"></div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom Questions */}
+            <div className="grid grid-cols-1 gap-4">
+              {bottomQuestions.map((question) => {
+                const match = getMatchedAnswer(question.id);
+
+                return (
+                  <div
+                    key={question.id}
+                    data-question-id={question.id}
+                    className={`question-drop-zone p-4 rounded-xl border-3 transition-all duration-300 touch-none ${
+                      match
+                        ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400 shadow-lg"
+                        : "bg-white/10 border-white/30 hover:border-cyan-400/50 hover:bg-white/15"
+                    } ${isDragging ? "scale-105 shadow-xl" : ""}`}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const data = JSON.parse(
+                        e.dataTransfer.getData("application/json")
+                      );
+                      if (data.type === "answer") {
+                        handleDropOnQuestion(question, data);
+                      }
+                    }}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center flex-1 min-w-0">
+                        <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black rounded-full w-8 h-8 flex items-center justify-center mr-3 shadow-lg flex-shrink-0">
+                          {question.displayId}
+                        </span>
+                        <span className="font-bold text-white text-lg">
+                          {question.text}
+                        </span>
+                      </div>
+
+                      {match && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="bg-white text-gray-900 px-3 py-2 rounded-xl text-sm font-bold shadow-lg border border-yellow-300 max-w-[200px] sm:max-w-[250px] md:max-w-[300px]">
+                            <div className="truncate text-ellipsis overflow-hidden">
+                              {match.answerText}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeMatch(question.id)}
+                            className="text-white hover:text-red-300 transition-colors text-lg bg-red-500/30 hover:bg-red-500/50 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0"
                             aria-label="Remove match"
                           >
                             ✕
@@ -445,92 +618,76 @@ const DragDropMatchingGame = () => {
               })}
             </div>
           </div>
-
-          {/* Answers Section */}
-          <div>
-            <h2 className="text-2xl md:text-3xl font-black text-white mb-6 flex items-center justify-center">
-              <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-3 rounded-xl mr-3 shadow-lg">🎯</span>
-              Answers Pool
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {answers.map((answer) => {
-                const isUsed = isAnswerUsed(answer.id);
-                const isActiveTouch = activeTouchItem?.id === answer.id;
-                
-                return (
-                  <div
-                    key={answer.id}
-                    draggable={!isUsed}
-                    onDragStart={(e) => !isUsed && handleDragStart(e, answer, 'answer')}
-                    onTouchStart={(e) => !isUsed && handleDragStart(e, answer, 'answer')}
-                    className={`p-3 rounded-xl text-center font-black transition-all duration-300 touch-none select-none relative overflow-hidden ${
-                      isUsed
-                        ? 'bg-gray-600/30 text-gray-400 cursor-not-allowed transform scale-95'
-                        : isActiveTouch
-                        ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white scale-110 shadow-2xl border-2 border-white'
-                        : 'bg-gradient-to-r from-green-400 to-emerald-500 text-white hover:scale-105 hover:shadow-xl active:scale-95 border-2 border-transparent'
-                    } shadow-lg`}
-                    style={{
-                      userSelect: 'none',
-                      WebkitUserSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                    }}
-                  >
-                    <span className="text-sm md:text-base relative z-10">{answer.text}</span>
-                    {isUsed && (
-                      <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
-                        <div className="w-full h-0.5 bg-white transform rotate-12 absolute"></div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* Submit Button - Fixed at Bottom */}
         {allMatched && !gameCompleted && (
           <div className="sticky bottom-6 z-20 mt-8">
             <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 border-2 border-yellow-300 shadow-2xl text-center transform hover:scale-105 transition-all duration-300 animate-pulse">
-              <h3 className="text-2xl font-black text-white mb-2">🚀 Ready to Submit!</h3>
-              <p className="text-white/90 mb-4">All pairs matched! Check your score!</p>
-              
+              <h3 className="text-2xl font-black text-white mb-2">
+                🚀 Ready to Submit!
+              </h3>
+              <p className="text-white/90 mb-4">
+                All pairs matched! Check your score!
+              </p>
+
               {submitStatus && (
-                <div className={`mb-4 p-3 rounded-xl ${
-                  submitStatus.includes('successfully') 
-                    ? 'bg-green-500/20 border border-green-400' 
-                    : submitStatus.includes('Error') || submitStatus.includes('Failed')
-                    ? 'bg-red-500/20 border border-red-400'
-                    : 'bg-blue-500/20 border border-blue-400'
-                }`}>
+                <div
+                  className={`mb-4 p-3 rounded-xl ${
+                    submitStatus.includes("successfully")
+                      ? "bg-green-500/20 border border-green-400"
+                      : submitStatus.includes("Error") ||
+                        submitStatus.includes("Failed")
+                      ? "bg-red-500/20 border border-red-400"
+                      : "bg-blue-500/20 border border-blue-400"
+                  }`}
+                >
                   <p className="text-white font-semibold">{submitStatus}</p>
                 </div>
               )}
-              
+
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className={`bg-white text-gray-900 hover:bg-yellow-100 font-black py-4 px-12 rounded-xl text-lg transition-all duration-200 active:scale-95 shadow-lg border-2 border-yellow-300 ${
-                  isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                  isSubmitting ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
                 {isSubmitting ? (
                   <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-900"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Submitting...
                   </span>
                 ) : (
-                  'SUBMIT ANSWERS'
+                  "SUBMIT ANSWERS"
                 )}
               </button>
-              
+
               {user && (
                 <p className="text-white/70 text-sm mt-3">
-                  Score will be saved for: <span className="font-bold text-yellow-300">{user.username}</span>
+                  Score will be saved for:{" "}
+                  <span className="font-bold text-yellow-300">
+                    {user.username}
+                  </span>
                 </p>
               )}
             </div>
@@ -539,7 +696,9 @@ const DragDropMatchingGame = () => {
 
         {/* Instructions */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 shadow-2xl">
-          <h3 className="text-xl font-black text-white mb-4 text-center">🎮 How to Play</h3>
+          <h3 className="text-xl font-black text-white mb-4 text-center">
+            🎮 How to Play
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white/5 rounded-xl p-4 border border-white/10">
               <h4 className="font-black text-cyan-300 mb-2 flex items-center">
@@ -586,45 +745,57 @@ const DragDropMatchingGame = () => {
       {/* Custom Styles */}
       <style jsx>{`
         @keyframes confetti {
-          0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+          0% {
+            transform: translateY(-100px) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotate(360deg);
+            opacity: 0;
+          }
         }
-        
+
         .animate-confetti {
           animation: confetti 3s linear forwards;
         }
-        
+
         .animate-bounce-in {
           animation: bounce 0.6s;
         }
-        
+
         @keyframes bounce {
-          0%, 20%, 53%, 80%, 100% {
-            transition-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
-            transform: translate3d(0,0,0);
+          0%,
+          20%,
+          53%,
+          80%,
+          100% {
+            transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+            transform: translate3d(0, 0, 0);
           }
-          40%, 43% {
-            transition-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+          40%,
+          43% {
+            transition-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
             transform: translate3d(0, -30px, 0);
           }
           70% {
-            transition-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+            transition-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
             transform: translate3d(0, -15px, 0);
           }
           90% {
-            transform: translate3d(0,-4px,0);
+            transform: translate3d(0, -4px, 0);
           }
         }
-        
+
         /* Optimize for mobile */
         @media (max-width: 768px) {
           .question-drop-zone {
             min-height: 70px;
           }
         }
-        
+
         /* Prevent flash of unstyled content */
-        .question-drop-zone, [draggable] {
+        .question-drop-zone,
+        [draggable] {
           -webkit-tap-highlight-color: transparent;
         }
       `}</style>
